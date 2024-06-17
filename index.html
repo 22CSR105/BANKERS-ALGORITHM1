@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Banker's Algorithm</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            color: white;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        form {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1em;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #2575fc;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #6a11cb;
+        }
+
+        .table-container {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Banker's Algorithm</h1>
+    <form id="bankersForm">
+        <div class="form-group">
+            <label>Number of Processes:</label>
+            <input type="number" id="processes" required>
+        </div>
+        <div class="form-group">
+            <label>Available Resources (comma separated):</label>
+            <input type="text" id="avail" required>
+        </div>
+        <div class="form-group">
+            <label>Maximum Demand (comma separated for each process, semicolon separated between processes):</label>
+            <input type="text" id="max_demand" required>
+        </div>
+        <div class="form-group">
+            <label>Allocation (comma separated for each process, semicolon separated between processes):</label>
+            <input type="text" id="allocation" required>
+        </div>
+        <button type="submit">Calculate</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        function parseMatrix(input) {
+            return input.split(';').map(row => row.split(',').map(Number));
+        }
+
+        function calculateNeed(max_demand, allocation) {
+            let need = [];
+            for (let i = 0; i < max_demand.length; i++) {
+                need.push(max_demand[i].map((max, j) => max - allocation[i][j]));
+            }
+            return need;
+        }
+
+        document.getElementById('bankersForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let processes = parseInt(document.getElementById('processes').value);
+            let avail = document.getElementById('avail').value.split(',').map(Number);
+            let max_demand = parseMatrix(document.getElementById('max_demand').value);
+            let allocation = parseMatrix(document.getElementById('allocation').value);
+            let need = calculateNeed(max_demand, allocation);
+
+            fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ processes, avail, max_demand, allocation }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                let resultDiv = document.getElementById('result');
+                let resultHTML = '<div class="table-container"><table>';
+                resultHTML += '<tr><th>Process</th><th>Allocation</th><th>Max</th><th>Need</th></tr>';
+                for (let i = 0; i < processes; i++) {
+                    resultHTML += `<tr><td>${i}</td>`;
+                    resultHTML += `<td>${allocation[i].join(', ')}</td>`;
+                    resultHTML += `<td>${max_demand[i].join(', ')}</td>`;
+                    resultHTML += `<td>${need[i].join(', ')}</td></tr>`;
+                }
+                resultHTML += '</table></div>';
+
+                if (data.safe) {
+                    resultHTML += `<p>System is in a safe state.<br>Safe sequence is: ${data.safe_seq.join(', ')}</p>`;
+                } else {
+                    resultHTML += '<p>System is not in a safe state.</p>';
+                }
+
+                resultDiv.innerHTML = resultHTML;
+            });
+        });
+    </script>
+</body>
+</html>
